@@ -22,7 +22,7 @@
 
 -- TODO: Renombrar 'items' según tu dominio
 -- TODO: Definir columnas con tipos y constraints apropiados
-CREATE TABLE IF NOT EXISTS items (
+CREATE TABLE items (
     id          INTEGER PRIMARY KEY,
     name        TEXT    NOT NULL,
     -- TODO: Agregar columna con DEFAULT
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS items (
 -- ============================================
 
 -- TODO: Renombrar y adaptar
-CREATE TABLE IF NOT EXISTS entities (
+CREATE TABLE entities (
     id          INTEGER PRIMARY KEY,
     name        TEXT    NOT NULL
     -- TODO: Agregar columnas relevantes con constraints
