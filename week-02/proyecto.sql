@@ -1,66 +1,87 @@
+USE tienda_madera;
+GO
+
 -- ============================================
 -- PROYECTO SEMANAL: DDL de tu Dominio
 -- Semana 02 — DDL: Diseño de Esquemas
+-- Dominio: Tienda de madera / muebles
 -- ============================================
-
--- NOTA PARA EL APRENDIZ:
--- Adapta este esquema al dominio que te fue asignado.
--- Renombra tablas y columnas según corresponda.
 
 -- ============================================
 -- LIMPIEZA: eliminar tablas si existen
 -- ============================================
 
--- TODO: Agregar DROP TABLE IF EXISTS para cada tabla de tu dominio
--- Ejemplo:
--- DROP TABLE IF EXISTS items;
--- DROP TABLE IF EXISTS entities;
+DROP TABLE IF EXISTS deliveries;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS materials;
+DROP TABLE IF EXISTS items;
+GO
 
 -- ============================================
--- TABLA 1: Entidad principal de tu dominio
+-- TABLA 1: Materiales
 -- ============================================
 
--- TODO: Renombrar 'items' según tu dominio
--- TODO: Definir columnas con tipos y constraints apropiados
-CREATE TABLE items (
-    id          INTEGER PRIMARY KEY,
-    name        TEXT    NOT NULL,
-    -- TODO: Agregar columna con DEFAULT
-    -- TODO: Agregar columna con CHECK
-    -- TODO: Agregar columna con UNIQUE si aplica
-    is_active   INTEGER NOT NULL DEFAULT 1
+CREATE TABLE materials (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    type VARCHAR(80) NOT NULL,
+    supplier VARCHAR(100) NOT NULL,
+    cost DECIMAL(12,2) NOT NULL CHECK (cost >= 0),
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    is_active BIT NOT NULL DEFAULT 1
 );
+GO
 
 -- ============================================
--- TABLA 2: Segunda entidad de tu dominio
+-- TABLA 2: Productos
 -- ============================================
 
--- TODO: Renombrar y adaptar
-CREATE TABLE entities (
-    id          INTEGER PRIMARY KEY,
-    name        TEXT    NOT NULL
-    -- TODO: Agregar columnas relevantes con constraints
+CREATE TABLE products (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name VARCHAR(120) NOT NULL,
+    category VARCHAR(80) NOT NULL,
+    material_id INT NOT NULL,
+    price DECIMAL(12,2) NOT NULL CHECK (price > 0),
+    stock INT NOT NULL DEFAULT 0 CHECK (stock >= 0),
+    is_active BIT NOT NULL DEFAULT 1,
+
+    CONSTRAINT FK_products_materials
+        FOREIGN KEY (material_id) REFERENCES materials(id)
 );
+GO
 
 -- ============================================
--- TABLA 3: Tercera entidad o tabla de relación
+-- TABLA 3: Pedidos
 -- ============================================
 
--- TODO: Crear la tercera tabla del dominio
--- Si es una tabla de relación, incluir dos FK
--- CREATE TABLE IF NOT EXISTS relations (
---     id         INTEGER PRIMARY KEY,
---     item_id    INTEGER NOT NULL,
---     entity_id  INTEGER NOT NULL,
---     FOREIGN KEY (item_id)   REFERENCES items(id),
---     FOREIGN KEY (entity_id) REFERENCES entities(id)
--- );
+CREATE TABLE orders (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    customer_name VARCHAR(120) NOT NULL,
+    customer_phone VARCHAR(30) NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    order_status VARCHAR(40) NOT NULL DEFAULT 'Pendiente',
+    order_date DATE NOT NULL DEFAULT GETDATE(),
+
+    CONSTRAINT FK_orders_products
+        FOREIGN KEY (product_id) REFERENCES products(id)
+);
+GO
 
 -- ============================================
--- VERIFICACIÓN
+-- TABLA 4: Entregas
 -- ============================================
 
--- TODO: Descomentar para verificar estructura
--- .tables
--- PRAGMA table_info(items);
--- PRAGMA table_info(entities);
+CREATE TABLE deliveries (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    order_id INT NOT NULL,
+    delivery_address VARCHAR(180) NOT NULL,
+    city VARCHAR(80) NOT NULL DEFAULT 'Bogotá',
+    delivery_status VARCHAR(40) NOT NULL DEFAULT 'Pendiente',
+    delivery_date DATE NULL,
+
+    CONSTRAINT FK_deliveries_orders
+        FOREIGN KEY (order_id) REFERENCES orders(id)
+);
+GO
