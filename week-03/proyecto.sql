@@ -1,137 +1,168 @@
--- ============================================
--- PROYECTO SEMANAL: DML — Manipulación de Datos
--- Semana 03 — INSERT INTO, UPDATE, DELETE
--- ============================================
--- Dominio asignado: Tienda de muebles
--- Entidades principales: products, materials, orders, deliveries
--- ============================================
+-- ============================================================
+-- Bootcamp SQL - Proyecto por semanas hasta semana 09, excepto semana 08
+-- Aprendiz: JISELT VALENTINA ZAMBRANO RUIZ
+-- Ficha: 3407182
+-- Dominio: Tienda de muebles
+-- Entidades: products, materials, orders, deliveries
+-- Motor: PostgreSQL 18 / pgAdmin
+-- ============================================================
+
+-- SEMANA 03 - DML: INSERT, UPDATE y DELETE
+-- Requisitos cubiertos: INSERT bulk, FK correcta, UPDATE seguro con WHERE,
+-- UPDATE condicional y DELETE precedido por SELECT de verificación.
 
 
+CREATE SCHEMA IF NOT EXISTS tienda_muebles;
+SET search_path TO tienda_muebles;
 
--- ============================================
--- PARTE 1: INSERT INTO
--- ============================================
+CREATE TABLE IF NOT EXISTS materials (
+    id INTEGER PRIMARY KEY,
+    material_code VARCHAR(20) NOT NULL UNIQUE,
+    name VARCHAR(120) NOT NULL,
+    material_type VARCHAR(80) NOT NULL,
+    supplier VARCHAR(120),
+    unit_cost NUMERIC(12,2) NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    CONSTRAINT chk_materials_unit_cost_positive CHECK (unit_cost > 0),
+    CONSTRAINT chk_materials_stock_not_negative CHECK (stock >= 0)
+);
 
--- Tabla padre: products
-INSERT INTO products (id, name, category, price, stock, is_active) VALUES
-(1, 'Sofá moderno', 'Sala', 1200000, 5, 1),
-(2, 'Mesa de comedor', 'Comedor', 850000, 3, 1),
-(3, 'Cama doble', 'Habitación', 950000, 4, 1),
-(4, 'Silla ergonómica', 'Oficina', 420000, 8, 1),
-(5, 'Biblioteca de madera', 'Estudio', 690000, 2, 1);
+CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY,
+    sku VARCHAR(20) NOT NULL UNIQUE,
+    name VARCHAR(120) NOT NULL,
+    category VARCHAR(80) NOT NULL,
+    material_id INTEGER,
+    price NUMERIC(12,2) NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT chk_products_price_positive CHECK (price > 0),
+    CONSTRAINT chk_products_stock_not_negative CHECK (stock >= 0),
+    CONSTRAINT fk_products_materials
+        FOREIGN KEY (material_id)
+        REFERENCES materials(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
+);
 
--- Tabla independiente: materials
-INSERT INTO materials (id, name, type, supplier, unit_cost) VALUES
-(1, 'Madera roble', 'Madera', 'Maderas del Norte', 150000),
-(2, 'Tela lino', 'Tela', 'Textiles Colombia', 80000),
-(3, 'Espuma alta densidad', 'Relleno', 'Espumas SAS', 60000),
-(4, 'Tornillos industriales', 'Herraje', 'Ferretería Central', 12000),
-(5, 'Barniz natural', 'Acabado', 'Pinturas Bogotá', 35000);
+CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY,
+    order_number VARCHAR(20) NOT NULL UNIQUE,
+    customer_name VARCHAR(120) NOT NULL,
+    customer_phone VARCHAR(30),
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    order_status VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    order_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    CONSTRAINT chk_orders_quantity_positive CHECK (quantity > 0),
+    CONSTRAINT chk_orders_status_valid
+        CHECK (order_status IN ('Pendiente', 'Pagado', 'En preparación', 'Entregado', 'Cancelado')),
+    CONSTRAINT fk_orders_products
+        FOREIGN KEY (product_id)
+        REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT
+);
 
--- Tabla hija: orders
--- Cada product_id existe en products
-INSERT INTO orders (id, customer_name, product_id, quantity, order_status, order_date) VALUES
-(1, 'Carlos Pérez', 1, 1, 'Pendiente', '2026-04-01'),
-(2, 'Laura Gómez', 2, 2, 'Pagado', '2026-04-02'),
-(3, 'Andrés Rodríguez', 3, 1, 'En preparación', '2026-04-03'),
-(4, 'María Torres', 4, 3, 'Pagado', '2026-04-04'),
-(5, 'Camila Rojas', 5, 1, 'Entregado', '2026-04-05');
+CREATE TABLE IF NOT EXISTS deliveries (
+    id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL UNIQUE,
+    delivery_address VARCHAR(160) NOT NULL,
+    city VARCHAR(80) NOT NULL,
+    delivery_status VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    delivery_date DATE,
+    CONSTRAINT chk_deliveries_status_valid
+        CHECK (delivery_status IN ('Pendiente', 'Programada', 'En camino', 'Entregada', 'Cancelada')),
+    CONSTRAINT fk_deliveries_orders
+        FOREIGN KEY (order_id)
+        REFERENCES orders(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
 
--- Tabla hija: deliveries
--- Cada order_id existe en orders
+-- INSERT bulk con mínimo 15 productos y 15 pedidos
+INSERT INTO materials (id, material_code, name, material_type, supplier, unit_cost, stock) VALUES
+(1, 'MAT-001', 'Madera roble', 'Madera', 'Maderas del Norte', 150000, 25),
+(2, 'MAT-002', 'Madera pino', 'Madera', 'Maderas Andinas', 95000, 40),
+(3, 'MAT-003', 'Tela lino', 'Tela', 'Textiles Bogotá', 80000, 35),
+(4, 'MAT-004', 'Espuma alta densidad', 'Relleno', 'Espumas SAS', 60000, 30),
+(5, 'MAT-005', 'Tornillos industriales', 'Herraje', 'Ferretería Central', 12000, 100)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO products (id, sku, name, category, material_id, price, stock, notes, is_active) VALUES
+(1, 'MUE-001', 'Sofá moderno', 'Sala', 1, 202000, 3, 'Producto disponible para venta en tienda', 'TRUE'),
+(2, 'MUE-002', 'Mesa de comedor familiar', 'Comedor', 2, 224000, 6, 'Producto disponible para venta en tienda', 'TRUE'),
+(3, 'MUE-003', 'Cama doble clásica', 'Habitación', 3, 246000, 9, NULL, 'TRUE'),
+(4, 'MUE-004', 'Silla ergonómica', 'Oficina', 4, 268000, 12, 'Producto disponible para venta en tienda', 'TRUE'),
+(5, 'MUE-005', 'Biblioteca de madera', 'Estudio', 5, 290000, 15, 'Producto disponible para venta en tienda', 'TRUE'),
+(6, 'MUE-006', 'Mesa de centro', 'Sala', 1, 312000, 1, 'Producto disponible para venta en tienda', 'TRUE'),
+(7, 'MUE-007', 'Armario de dos puertas', 'Habitación', NULL, 334000, 4, 'Producto disponible para venta en tienda', 'TRUE'),
+(8, 'MUE-008', 'Escritorio sencillo', 'Oficina', 3, 356000, 7, 'Producto disponible para venta en tienda', 'TRUE'),
+(9, 'MUE-009', 'Comedor cuatro puestos', 'Comedor', 4, 378000, 10, 'Producto disponible para venta en tienda', 'TRUE'),
+(10, 'MUE-010', 'Mesa auxiliar redonda', 'Sala', 5, 400000, 13, NULL, 'TRUE'),
+(11, 'MUE-011', 'Base cama sencilla', 'Habitación', 1, 422000, 16, 'Producto disponible para venta en tienda', 'TRUE'),
+(12, 'MUE-012', 'Archivador pequeño', 'Oficina', 2, 444000, 2, 'Producto disponible para venta en tienda', 'TRUE'),
+(13, 'MUE-013', 'Repisa flotante', 'Estudio', 3, 466000, 5, 'Producto disponible para venta en tienda', 'TRUE'),
+(14, 'MUE-014', 'Silla de comedor', 'Comedor', NULL, 488000, 8, 'Producto disponible para venta en tienda', 'TRUE'),
+(15, 'MUE-015', 'Mueble para televisor', 'Sala', 5, 510000, 11, 'Producto disponible para venta en tienda', 'TRUE')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO orders (id, order_number, customer_name, customer_phone, product_id, quantity, order_status, order_date) VALUES
+(1, 'ORD-001', 'Carlos Pérez', '3001110001', 1, 2, 'Pendiente', '2026-04-02'),
+(2, 'ORD-002', 'Laura Gómez', '3001110002', 2, 3, 'Pagado', '2026-04-03'),
+(3, 'ORD-003', 'Andrés Rodríguez', '3001110003', 3, 1, 'En preparación', '2026-04-04'),
+(4, 'ORD-004', 'María Torres', NULL, 4, 2, 'Entregado', '2026-04-05'),
+(5, 'ORD-005', 'Camila Rojas', '3001110005', 5, 3, 'Cancelado', '2026-04-06'),
+(6, 'ORD-006', 'Diana Martínez', '3001110006', 6, 1, 'Pendiente', '2026-04-07'),
+(7, 'ORD-007', 'Felipe Castro', '3001110007', 7, 2, 'Pagado', '2026-04-08'),
+(8, 'ORD-008', 'Sandra López', NULL, 8, 3, 'En preparación', '2026-04-09'),
+(9, 'ORD-009', 'Jorge Ramírez', '3001110009', 9, 1, 'Entregado', '2026-04-10'),
+(10, 'ORD-010', 'Natalia Mora', '3001110010', 10, 2, 'Cancelado', '2026-04-11'),
+(11, 'ORD-011', 'Paula García', '3001110011', 11, 3, 'Pendiente', '2026-04-12'),
+(12, 'ORD-012', 'Miguel Herrera', '3001110012', 12, 1, 'Pagado', '2026-04-13'),
+(13, 'ORD-013', 'Valentina Ruiz', NULL, 13, 2, 'En preparación', '2026-04-14'),
+(14, 'ORD-014', 'Santiago León', '3001110014', 14, 3, 'Entregado', '2026-04-15'),
+(15, 'ORD-015', 'Luisa Cárdenas', '3001110015', 15, 1, 'Cancelado', '2026-04-16')
+ON CONFLICT (id) DO NOTHING;
+
 INSERT INTO deliveries (id, order_id, delivery_address, city, delivery_status, delivery_date) VALUES
-(1, 1, 'Calle 10 # 15-20', 'Bogotá', 'Programada', '2026-04-06'),
-(2, 2, 'Carrera 8 # 22-40', 'Soacha', 'En camino', '2026-04-07'),
-(3, 3, 'Avenida 68 # 45-10', 'Bogotá', 'Pendiente', '2026-04-08'),
-(4, 4, 'Calle 80 # 90-15', 'Bogotá', 'Programada', '2026-04-09'),
-(5, 5, 'Carrera 30 # 12-50', 'Chía', 'Entregada', '2026-04-10');
+(1, 1, 'Calle 11 # 21-31', 'Bogotá', 'Pendiente', '2026-05-02'),
+(2, 2, 'Calle 12 # 22-32', 'Soacha', 'Programada', '2026-05-03'),
+(3, 3, 'Calle 13 # 23-33', 'Chía', 'En camino', '2026-05-04'),
+(4, 4, 'Calle 14 # 24-34', 'Mosquera', 'Entregada', NULL),
+(5, 5, 'Calle 15 # 25-35', 'Funza', 'Cancelada', '2026-05-06')
+ON CONFLICT (id) DO NOTHING;
 
--- ============================================
--- PARTE 2: UPDATE
--- ============================================
-
--- Actualizar una columna de una fila específica por PK
+-- UPDATE seguro usando PK.
 UPDATE products
 SET price = 1250000
 WHERE id = 1;
 
--- Actualizar múltiples columnas de una fila específica
+-- UPDATE seguro cambiando varias columnas por PK.
 UPDATE products
-SET stock = 4,
-    is_active = 1
+SET stock = 6,
+    is_active = TRUE
 WHERE id = 5;
 
--- Actualizar múltiples filas con condición de negocio
--- Aumentar 5% a productos de oficina
+-- UPDATE condicional sobre varias filas: aumenta 5% productos de oficina.
 UPDATE products
 SET price = price * 1.05
 WHERE category = 'Oficina';
 
--- Actualizar estado de un pedido
-UPDATE orders
-SET order_status = 'Pagado'
-WHERE id = 1;
+-- DELETE seguro: primero se inserta un registro temporal para no afectar datos importantes.
+INSERT INTO deliveries (id, order_id, delivery_address, city, delivery_status, delivery_date)
+VALUES (900, 15, 'Registro temporal', 'Temporal', 'Pendiente', NULL)
+ON CONFLICT (id) DO NOTHING;
 
--- Actualizar estado y fecha de una entrega
-UPDATE deliveries
-SET delivery_status = 'Programada',
-    delivery_date = '2026-04-11'
-WHERE id = 3;
+-- Verificación antes de eliminar.
+SELECT
+    d.id AS "Id entrega temporal",
+    d.city AS "Ciudad",
+    d.delivery_status AS "Estado"
+FROM deliveries AS d
+WHERE d.id = 900;
 
--- ============================================
--- PARTE 3: DELETE SEGURO
--- ============================================
-
--- Primero verificamos qué entrega se eliminará
-SELECT id, order_id, city, delivery_status
-FROM deliveries
-WHERE city = 'Chía';
-
--- Luego eliminamos usando la misma condición
+-- Eliminación segura usando WHERE.
 DELETE FROM deliveries
-WHERE city = 'Chía';
-
--- Verificamos qué material se eliminará
-SELECT id, name, supplier
-FROM materials
-WHERE supplier = 'Pinturas Bogotá';
-
--- Luego eliminamos usando la misma condición
-DELETE FROM materials
-WHERE supplier = 'Pinturas Bogotá';
-
--- ============================================
--- VERIFICACIÓN FINAL
--- ============================================
-
-SELECT *
-FROM products
-ORDER BY id;
-
-SELECT *
-FROM materials
-ORDER BY id;
-
-SELECT
-    orders.id AS order_id,
-    orders.customer_name,
-    products.name AS product_name,
-    orders.quantity,
-    orders.order_status,
-    orders.order_date
-FROM orders
-INNER JOIN products
-    ON orders.product_id = products.id
-ORDER BY orders.id;
-
-SELECT
-    deliveries.id AS delivery_id,
-    orders.customer_name,
-    deliveries.delivery_address,
-    deliveries.city,
-    deliveries.delivery_status,
-    deliveries.delivery_date
-FROM deliveries
-INNER JOIN orders
-    ON deliveries.order_id = orders.id
-ORDER BY deliveries.id;   
+WHERE id = 900;
